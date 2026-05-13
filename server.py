@@ -1,19 +1,29 @@
 import sys
 
-from protocols import (
-    read_message,
-    send_response
-)
+import definitions
+import diagnostics
+import parser
+import protocols
+
+
+def publish_diagnostics(uri: str, text: str) -> None:
+    parsed = parser.parse(text)
+    diags = diagnostics.validate(parsed)
+    protocols.send_notification("textDocument/publishDiagnostics", {
+        "uri": uri,
+        "diagnostics": diags
+    })
 
 
 def main():
     documents = {}
     while True:
         try:
-            message = read_message()
+            message = protocols.read_message()
         except EOFError:
             break
         method = message.get("method")
+        params = message.get("params", {})
 
         if method == "initialize":
             result = {
@@ -26,19 +36,63 @@ def main():
                     }
                 }
             }
-            send_response(message["id"], result)
+            protocols.send_response(message["id"], result)
         elif method == "initialized":
             pass
         elif method == "textDocument/didOpen":
-            uri = message["params"]["textDocument"]["uri"]
-            text = message["params"]["textDocument"]["text"]
+            uri = params["textDocument"]["uri"]
+            text = params["textDocument"]["text"]
             documents[uri] = text
+            publish_diagnostics(uri, text)
         elif method == "textDocument/didChange":
-            uri = message["params"]["textDocument"]["uri"]
-            text = message["params"]["contentChanges"][0]["text"]
+            uri = params["textDocument"]["uri"]
+            text = params["contentChanges"][0]["text"]
             documents[uri] = text
+            publish_diagnostics(uri, text)
+        elif method == "textDocument/didClose":
+            uri = params["textDocument"]["uri"]
+            if uri in documents:
+                del documents[uri]
+        elif method == "textDocument/hover":
+            uri = params["textDocument"]["uri"]
+            pos = params["position"]
+            text = documents.get(uri, "")
+
+            parsed = parser.parse(text)
+            description = None
+
+            for prop in parsed["preamble"]:
+                if prop["line"] == pos["line"]:
+                    if prop["key_range"]["start"] <= pos["character"] <= prop["key_range"]["end"]:
+                        key = prop["key"]
+                        if key in definitions.PROPERTIES:
+                            description = definitions.PROPERTIES[key]["description"]
+                        break
+
+            if not description:
+                for section in parsed["sections"]:
+                    for prop in section["properties"]:
+                        if prop["line"] == pos["line"]:
+                            if prop["key_range"]["start"] <= pos["character"] <= prop["key_range"]["end"]:
+                                key = prop["key"]
+                                if key in definitions.PROPERTIES:
+                                    description = definitions.PROPERTIES[key]["description"]
+                                break
+                    if description:
+                        break
+
+            if description:
+                protocols.send_response(message["id"], {
+                    "contents": {
+                        "kind": "markdown",
+                        "value": description
+                    }
+                })
+            else:
+                protocols.send_response(message["id"], None)
+
         elif method == "shutdown":
-            send_response(message["id"], None)
+            protocols.send_response(message["id"], None)
         elif method == "exit":
             sys.exit(0)
 

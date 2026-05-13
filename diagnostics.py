@@ -7,7 +7,7 @@ def create_diagnostic_message(
     end: int,
     message: str,
     severity: int
-):
+) -> dict:
     return {
         "range": {
             "start": {
@@ -24,9 +24,9 @@ def create_diagnostic_message(
     }
 
 
-def validate(parsed_data: dict):
+def validate(parsed: dict) -> dict:
     diagnostics = []
-    for prop in parsed_data["preamble"]:
+    for prop in parsed["preamble"]:
         key = prop["key"]
         value = prop["value"]
         line = prop["line"]
@@ -50,7 +50,7 @@ def validate(parsed_data: dict):
             )
             diagnostics.append(diag)
             continue
-    for section in parsed_data["sections"]:
+    for section in parsed["sections"]:
         for prop in section["properties"]:
             key = prop["key"]
             value = prop["value"]
