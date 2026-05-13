@@ -91,6 +91,42 @@ def main():
             else:
                 protocols.send_response(message["id"], None)
 
+        elif method == "textDocument/completion":
+            uri = params["textDocument"]["uri"]
+            pos = params["position"]
+            text = documents.get(uri, "")
+            lines = text.splitlines()
+
+            current_line = ""
+            if pos["line"] < len(lines):
+                current_line = lines[pos["line"]]
+
+            line_before_cursor = current_line[:pos["character"]]
+
+            items = []
+            if "=" in line_before_cursor:
+                key_part = current_line.split("=", 1)[0].strip()
+                if key_part in definitions.PROPERTIES:
+                    prop_def = definitions.PROPERTIES[key_part]
+                    if prop_def["values"]:
+                        for v in prop_def["values"]:
+                            items.append({
+                                "label": v,
+                                "kind": 12, # Value
+                                "detail": f"Value for {key_part}"
+                            })
+                    elif key_part == "indent_size":
+                        items.append({"label": "tab", "kind": 12})
+            else:
+                for key, prop_def in definitions.PROPERTIES.items():
+                    items.append({
+                        "label": key,
+                        "kind": 10,
+                        "detail": prop_def["description"]
+                    })
+
+            protocols.send_response(message["id"], items)
+
         elif method == "shutdown":
             protocols.send_response(message["id"], None)
         elif method == "exit":
