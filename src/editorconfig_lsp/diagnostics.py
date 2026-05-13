@@ -1,4 +1,4 @@
-import definitions
+from . import definitions
 
 
 def create_diagnostic_message(

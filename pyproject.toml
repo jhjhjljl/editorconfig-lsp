@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "editorconfig-lsp"
+version = "0.0.1"
+authors = [
+  { name="Justin Lee", email="justinlsoftware@gmail.com" },
+]
+description = "Language server protocol for editorconfig file."
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+
+[project.scripts]
+editorconfig-lsp = "editorconfig_lsp.server:main"

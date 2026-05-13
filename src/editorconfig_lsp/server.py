@@ -1,9 +1,9 @@
 import sys
 
-import definitions
-import diagnostics
-import parser
-import protocols
+from . import definitions
+from . import diagnostics
+from . import parser
+from . import protocols
 
 
 def publish_diagnostics(uri: str, text: str) -> None:
