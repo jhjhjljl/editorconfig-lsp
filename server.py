@@ -1,17 +1,44 @@
-import protocol
 import sys
 
+from protocols import (
+    read_message,
+    send_response
+)
 
-def main() -> None:
+
+def main():
+    documents = {}
     while True:
-        message = protocol.read_message()
+        try:
+            message = read_message()
+        except EOFError:
+            break
         method = message.get("method")
+
         if method == "initialize":
-            protocol.send_response(message["id"], {"capabilities": {}})
+            result = {
+                "capabilities": {
+                    "textDocumentSync": 1,
+                    "hoverProvider": True,
+                    "completionProvider": {
+                        "resolveProvider": False,
+                        "triggerCharacters": ["="]
+                    }
+                }
+            }
+            send_response(message["id"], result)
         elif method == "initialized":
             pass
+        elif method == "textDocument/didOpen":
+            uri = message["params"]["textDocument"]["uri"]
+            text = message["params"]["textDocument"]["text"]
+            documents[uri] = text
+        elif method == "textDocument/didChange":
+            uri = message["params"]["textDocument"]["uri"]
+            text = message["params"]["contentChanges"][0]["text"]
+            documents[uri] = text
         elif method == "shutdown":
-            protocol.send_response(message["id"])
+            send_response(message["id"], None)
         elif method == "exit":
             sys.exit(0)
 
